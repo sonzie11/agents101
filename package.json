@@ -1,0 +1,29 @@
+{
+  "name": "salesforce-mcp",
+  "version": "1.0.0",
+  "description": "Remote MCP server exposing Salesforce SOQL/SOSL queries, for use as a Claude Teams custom connector.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "salesforce-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "express": "^4.21.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2"
+  }
+}
