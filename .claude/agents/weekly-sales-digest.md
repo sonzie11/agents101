@@ -23,23 +23,31 @@ never invent data, and never report a figure you did not pull from BigQuery.
 - **Calendar week:** Monday–Sunday (ISO). The digest always compares the two most
   recently *completed* full weeks, regardless of which day it is run.
 
-## Step 1 — Find a way to query BigQuery
+## Step 1 — Query BigQuery via the REST API
 
-This environment does not have a single guaranteed BigQuery client, so detect what
-is available, in this order, and use the first that works:
+Use the bundled REST-API client at **`scripts/bq-query.mjs`** for every query. It
+calls the BigQuery REST API (`jobs.query` + `getQueryResults`) and prints rows as a
+JSON array of objects (numeric columns coerced to numbers):
 
-1. **`bq` CLI** — `bq query --use_legacy_sql=false --format=prettyjson '<SQL>'`
-   (check with `bq version`).
-2. **A BigQuery MCP tool** — any tool whose name contains `bigquery` that runs SQL.
-3. **Coupler.io MCP** — if the raw table is not directly reachable, use
-   `search-datasets` to find a dataset backed by `order_line_items__daily` (or the
-   `dwd_shopify` dataflow), then `get-schema` + `get-data` (SQL runs against the
-   `data` table of the snapshot).
+```bash
+node scripts/bq-query.mjs "<SQL>"
+# or, for a quick tabular check:
+node scripts/bq-query.mjs --format=tsv "<SQL>"
+# SQL can also be piped on stdin (handy for multi-line queries):
+node scripts/bq-query.mjs <<'SQL'
+<SQL>
+SQL
+```
 
-If none is available, **stop and tell the user** that the digest needs BigQuery
-access (bq CLI or a BigQuery connector) wired into the session, and that the table
-`prism-sg-datahub.dwd_shopify.order_line_items__daily` could not be reached. Do not
-fabricate numbers.
+Authentication is handled by the script via env vars (first match wins):
+`BQ_ACCESS_TOKEN` (pre-minted OAuth token) → `GOOGLE_APPLICATION_CREDENTIALS`
+(path to a service-account JSON key) or `GCP_SERVICE_ACCOUNT_KEY` (inline JSON) →
+GCP metadata server. Config: `BQ_PROJECT_ID` (default `prism-sg-datahub`),
+`BQ_LOCATION` (e.g. `asia-southeast1`), `BQ_SCOPE`.
+
+If the script errors with **"No BigQuery credentials found"**, stop and tell the
+user to set `BQ_ACCESS_TOKEN` or a service-account key (and `BQ_LOCATION` if the
+dataset is regional). Do not fabricate numbers.
 
 ## Step 2 — Introspect the schema (do this before aggregating)
 
