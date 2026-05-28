@@ -2,7 +2,7 @@
 name: weekly-sales-digest
 description: >-
   Posts a weekly sales digest to Slack #automation-test comparing the most
-  recently completed calendar week vs the prior week, broken down by product
+  recently completed calendar week vs the prior week, broken down by L1 product
   category, using the BigQuery table prism-sg-datahub.dwd_shopify.order_line_items__daily
   (the same source Alex uses). Use at the end of a calendar week, or whenever the
   user asks for the "weekly sales digest", "WoW sales by category", or "sales deltas
@@ -57,17 +57,22 @@ ORDER BY ordinal_position;
 
 From the columns, identify and map:
 - **date column** — the daily/order date (e.g. `order_date`, `date`, `day`).
-- **product category column** — the category dimension (e.g. `product_category`,
-  `product_type`, `category`). If several exist, prefer the most category-like;
-  state which you chose in the digest footer.
+- **product category column** — use the **L1 (top-level) product category**. Match
+  the L1 column by name, e.g. `l1_product_category`, `product_category_l1`,
+  `category_l1`, `l1_category`, or `product_category_level_1`. If the hierarchy is
+  exposed as a single column with a level suffix, pick the L1/level-1 one — do NOT
+  use L2/L3 or an ungraded `product_category`/`product_type`. State the exact L1
+  column you used in the digest footer. If no L1 column exists, stop and ask the
+  user which column represents L1 rather than guessing.
 - **sales measure** — prefer net sales (e.g. `net_sales`, `net_revenue`,
   `total_sales`, `gross_sales`, `sales_amount`). State which measure you used.
   Also pull **units/quantity** if a clear column exists (e.g. `quantity`, `units`).
 
 ## Step 3 — Compute the week-over-week deltas
 
-Adapt the placeholders `<date_col>`, `<category_col>`, `<sales_col>` to the real
-column names from Step 2. This computes the last two completed Mon–Sun weeks:
+Adapt the placeholders `<date_col>`, `<l1_category_col>`, `<sales_col>` to the real
+column names from Step 2 (`<l1_category_col>` = the L1 product category). This
+computes the last two completed Mon–Sun weeks:
 
 ```sql
 WITH bounds AS (
@@ -79,7 +84,7 @@ WITH bounds AS (
 ),
 weekly AS (
   SELECT
-    <category_col> AS product_category,
+    <l1_category_col> AS product_category,
     CASE
       WHEN <date_col> BETWEEN (SELECT cur_start FROM bounds)  AND (SELECT cur_end FROM bounds)  THEN 'current'
       WHEN <date_col> BETWEEN (SELECT prev_start FROM bounds) AND (SELECT prev_end FROM bounds) THEN 'prior'
@@ -129,7 +134,7 @@ separators; show pct with a sign and one decimal; use 🟢 for up, 🔴 for down
 *Top gainer:* {cat} {emoji} {signed_pct}% ({signed_delta})
 *Biggest drop:* {cat} {emoji} {signed_pct}% ({signed_delta})
 
-_Source: prism-sg-datahub.dwd_shopify.order_line_items__daily · measure: {sales_col} · category: {category_col} · generated {today} SGT_
+_Source: prism-sg-datahub.dwd_shopify.order_line_items__daily · measure: {sales_col} · L1 category: {l1_category_col} · generated {today} SGT_
 ```
 
 ## Step 5 — Post to Slack
